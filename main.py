@@ -40,7 +40,7 @@ class HHVacancyParser(QMainWindow):
         # Дополнительные параметры
         params_layout = QHBoxLayout()
 
-        # Регион
+        # Регион https://api.hh.ru/areas
         params_layout.addWidget(QLabel('Регион:'))
         self.area_combo = QComboBox()
         self.area_combo.addItems([
