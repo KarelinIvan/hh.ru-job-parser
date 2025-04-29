@@ -43,10 +43,15 @@ class HHVacancyParser(QMainWindow):
         # Регион
         params_layout.addWidget(QLabel('Регион:'))
         self.area_combo = QComboBox()
-        self.area_combo.addItems(['Москва (1)',
-                                  'Санкт-Петербург (2)',
-                                  'Россия (113)',
-                                  ])
+        self.area_combo.addItems([
+            'Архангельск (19)',
+            'Москва (1)',
+            'Санкт-Петербург (2)',
+            'Иваново (36)',
+            'Ярославль (107)',
+            'Россия (113)',
+            'Другие регионы (1001)',
+             ])
         params_layout.addWidget(self.area_combo)
 
         # Зарплата
@@ -112,6 +117,75 @@ class HHVacancyParser(QMainWindow):
         # Статус бар
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+
+    def load_areas(self):
+        """Асинхронная загрузка списка городов из API HH"""
+        self.area_combo.clear()
+        self.area_combo.addItem("Загрузка городов...")  # Временный пункт
+
+        # Запускаем в отдельном потоке, чтобы не блокировать UI
+        import threading
+        threading.Thread(target=self._fetch_areas, daemon=True).start()
+
+    def _fetch_areas(self):
+        """Фоновый запрос к API для получения городов"""
+        try:
+            import requests
+            from PyQt6.QtCore import pyqtSignal, QObject
+
+            class Signals(QObject):
+                finished = pyqtSignal(list)
+
+            self.area_signals = Signals()
+            self.area_signals.finished.connect(self._update_area_combo)
+
+            response = requests.get("https://api.hh.ru/areas", timeout=10)
+            areas = response.json()
+
+            popular_cities = [
+                ('Москва', 1),
+                ('Санкт-Петербург', 2),
+                ('Новосибирск', 4),
+                ('Екатеринбург', 3),
+                ('Казань', 88),
+                ('Нижний Новгород', 66),
+                ('Ростов-на-Дону', 76),
+                ('Краснодар', 53),
+                ('Самара', 78),
+                ('Уфа', 99),
+                ('Воронеж', 26),
+                ('Пермь', 72),
+                ('Волгоград', 24),
+                ('Красноярск', 54)
+            ]
+
+            # Формируем список для комбобокса
+            cities = [f"{city} ({id})" for city, id in popular_cities]
+            cities.append('Россия (113)')
+
+            self.area_signals.finished.emit(cities)
+
+        except Exception as e:
+            print(f"Ошибка загрузки городов: {e}")
+            # Возвращаем базовый список в случае ошибки
+            default_cities = [
+                'Москва (1)',
+                'Санкт-Петербург (2)',
+                'Россия (113)'
+            ]
+            self.area_signals.finished.emit(default_cities)
+
+    def _update_area_combo(self, cities):
+        """Обновление комбобокса с городами (вызывается в основном потоке)"""
+        self.area_combo.clear()
+        self.area_combo.addItems(cities)
+
+        # Добавляем поиск
+        self.area_combo.setEditable(True)
+        self.area_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        completer = self.area_combo.completer()
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def search_vacancies(self):
         """ Функция для получения вакансий через API hh.ru """
