@@ -1,6 +1,7 @@
 import requests
 
 def get_hh_vacancies():
+    """ Функция для получения данных с hh.ru по API """
     base_url = 'https://api.hh.ru/vacancies'
     headers = {'User-Agent': 'hh.ru-job-parser/1.0 (ivan.karelin.1993@mail.ru)'}
 
