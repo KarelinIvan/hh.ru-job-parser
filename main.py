@@ -234,62 +234,83 @@ class HHVacancyParser(QMainWindow):
             self.results_table.setItem(row_position, 6, link_item)
 
     def export_to_excel(self):
-        """ Функция для сохранения данных в Excel-файл """
+        """Функция для сохранения данных в Excel-файл"""
         if not self.vacancies:
             QMessageBox.warning(self, 'Предупреждение', 'Нет данных для экспорта')
             return
 
+        # Предлагаем имя файла по умолчанию
+        default_filename = f"Результаты поиска {datetime.now().strftime('%Y-%m-%d')}.xlsx"
         filepath, _ = QFileDialog.getSaveFileName(
             self,
             'Сохранить файл',
-            f"Результаты поиска {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.xlsx",
+            default_filename,
             'Excel Files (*.xlsx)'
         )
 
         if not filepath:
-            return
+            return  # Пользователь отменил сохранение
 
         try:
             data = []
             for vacancy in self.vacancies:
+                # Обработка зарплаты
                 salary = vacancy.get('salary')
                 salary_str = 'Не указана'
                 if salary:
-                    salary_from = salary.get('from')
-                    salary_to = salary.get('to')
+                    salary_from = salary.get('from', '?')
+                    salary_to = salary.get('to', '?')
                     currency = salary.get('currency', '').upper()
-                    salary_str = f"{salary_from or '?'} - {salary_to or '?'} {currency}"
+                    salary_str = f"{salary_from} - {salary_to} {currency}".strip()
+
+                # Обработка даты (удаление часового пояса)
+                pub_date = vacancy.get('published_at')
+                if pub_date:
+                    try:
+                        pub_date = pd.to_datetime(pub_date).tz_localize(None)
+                    except:
+                        pub_date = None
 
                 data.append({
-                    'Название': vacancy.get('name'),
-                    'Компания': vacancy.get('employer', {}).get('name'),
+                    'Название': vacancy.get('name', ''),
+                    'Компания': vacancy.get('employer', {}).get('name', ''),
                     'Зарплата': salary_str,
-                    'Город': vacancy.get('area', {}).get('name'),
-                    'Опыт': vacancy.get('experience', {}).get('name'),
-                    'Тип занятости': vacancy.get('employment', {}).get('name'),
-                    'Дата публикации': vacancy.get('published_at'),
-                    'Ссылка': vacancy.get('alternate_url')
+                    'Город': vacancy.get('area', {}).get('name', ''),
+                    'Опыт': vacancy.get('experience', {}).get('name', ''),
+                    'Тип занятости': vacancy.get('employment', {}).get('name', ''),
+                    'Дата публикации': pub_date,
+                    'Ссылка': vacancy.get('alternate_url', '')
                 })
 
+            # Создаем DataFrame
             df = pd.DataFrame(data)
+
+            # Убедимся, что даты правильно обработаны
             if 'Дата публикации' in df.columns:
-                df['Дата публикации'] = pd.to_datetime(df['Дата публикации'])
+                df['Дата публикации'] = pd.to_datetime(df['Дата публикации'], errors='coerce')
 
-            with pd.ExcelWriter(filepath, engine="xlsxwriter") as file:
-                df.to_excel(file, index=False, sheet_name="Вакансии")
+            # Сохраняем в Excel
+            with pd.ExcelWriter(filepath, engine='xlsxwriter', datetime_format='YYYY-MM-DD HH:MM:SS') as writer:
+                df.to_excel(writer, index=False, sheet_name='Вакансии')
 
-                worksheet = file.sheets['Вакансии']
+                # Настраиваем ширину столбцов
+                worksheet = writer.sheets['Вакансии']
                 for i, col in enumerate(df.columns):
+                    # Определяем максимальную длину содержимого
                     max_len = max(
-                        df[col].astype(str).map(len).max(),
-                        len(col))
-                    worksheet.set_column(i, i, max_len + 2)
+                        df[col].astype(str).apply(len).max(),  # Макс. длина данных
+                        len(str(col))  # Длина заголовка
+                    )
+                    worksheet.set_column(i, i, min(max_len + 2, 50))  # Ограничиваем максимальную ширину
 
             QMessageBox.information(self, 'Успех', f'Файл успешно сохранен:\n{filepath}')
             self.status_bar.showMessage(f'Файл экспортирован: {os.path.basename(filepath)}')
 
+        except PermissionError:
+            QMessageBox.critical(self, 'Ошибка', 'Нет прав для записи в указанное место')
+            self.status_bar.showMessage('Ошибка: нет прав для записи')
         except Exception as e:
-            QMessageBox.critical(self, 'Ошибка', f'Не удалось сохранить файл: {str(e)}')
+            QMessageBox.critical(self, 'Ошибка', f'Не удалось сохранить файл:\n{str(e)}')
             self.status_bar.showMessage('Ошибка при экспорте')
 
 
