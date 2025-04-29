@@ -52,7 +52,7 @@ class HHVacancyParser(QMainWindow):
             'Ярославль (112)',
             'Россия (113)',
             'Другие регионы (1001)',
-             ])
+        ])
         params_layout.addWidget(self.area_combo)
 
         # Зарплата
@@ -85,6 +85,19 @@ class HHVacancyParser(QMainWindow):
         ])
         params_layout.addWidget(self.employment_combo)
 
+        # Форма работы
+        params_layout.addWidget(QLabel('Формат работы'))
+        self.schedule_combo = QComboBox()
+        self.schedule_combo.addItems([
+            'Любая',
+            'Полный день',
+            'Сменный график',
+            'Гибкий график',
+            'Удаленная работа',
+            'Вахтовый метод',
+        ])
+        params_layout.addWidget(self.schedule_combo)
+
         search_layout.addLayout(params_layout)
         main_layout.addWidget(search_group)
 
@@ -103,11 +116,12 @@ class HHVacancyParser(QMainWindow):
 
         # Таблица результатов
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(7)
+        self.results_table.setColumnCount(8)
         self.results_table.setHorizontalHeaderLabels(['Название',
                                                       'Компания',
                                                       'Зарплата',
                                                       'Тип занятости',
+                                                      'Форма работы',
                                                       'Город',
                                                       'Дата публикации',
                                                       'Ссылка',
@@ -118,7 +132,6 @@ class HHVacancyParser(QMainWindow):
         # Статус бар
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-
 
     def search_vacancies(self):
         """ Функция для получения вакансий через API hh.ru """
@@ -138,7 +151,7 @@ class HHVacancyParser(QMainWindow):
             'text': query,
             'area': self.area_combo.currentText().split("(")[1][:-1],
             'per_page': 100,
-            'page' : 0
+            'page': 0
         }
 
         # Зарплата
@@ -169,6 +182,17 @@ class HHVacancyParser(QMainWindow):
         }
         if self.employment_combo.currentText() != 'Любая':
             params['employment'] = employment_map[self.employment_combo.currentText()]
+
+        # Форма работы
+        schedule_map = {
+            'Полный день': 'fullDay',
+            'Сменный график': 'shift',
+            'Гибкий график': 'flexible',
+            'Удаленная работа': 'remote',
+            'Вахтовый метод': 'flyInFlyOut',
+        }
+        if self.schedule_combo.currentText() != 'Любая':
+            params['schedule'] = schedule_map[self.schedule_combo.currentText()]
 
         self.status_bar.showMessage('Идет поиск вакансий...')
         QApplication.processEvents()
@@ -218,20 +242,24 @@ class HHVacancyParser(QMainWindow):
             employment = vacancy.get('employment', {}).get('name', 'Не указан')
             self.results_table.setItem(row_position, 3, QTableWidgetItem(employment))
 
+            # Форма работы
+            schedule = vacancy.get('schedule', {}).get('name', 'Не указана')
+            self.results_table.setItem(row_position, 4, QTableWidgetItem(schedule))
+
             # Город
-            self.results_table.setItem(row_position, 4,
+            self.results_table.setItem(row_position, 5,
                                        QTableWidgetItem(vacancy.get('area', {}).get('name', '')))
 
             # Дата
             pub_date = vacancy.get('published_at', '')
             if pub_date:
                 pub_date = datetime.strptime(pub_date, '%Y-%m-%dT%H:%M:%S%z').strftime('%Y-%m-%d')
-            self.results_table.setItem(row_position, 5, QTableWidgetItem(pub_date))
+            self.results_table.setItem(row_position, 6, QTableWidgetItem(pub_date))
 
             # Ссылка
             link_item = QTableWidgetItem(vacancy.get('alternate_url', ''))
             link_item.setFlags(link_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
-            self.results_table.setItem(row_position, 6, link_item)
+            self.results_table.setItem(row_position, 7, link_item)
 
     def export_to_excel(self):
         """Функция для сохранения данных в Excel-файл"""
