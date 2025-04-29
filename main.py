@@ -68,6 +68,22 @@ class HHVacancyParser(QMainWindow):
         search_layout.addLayout(params_layout)
         main_layout.addWidget(search_group)
 
+        # Тип занятости
+        params_layout.addWidget(QLabel('Занятость'))
+        self.employment_combo = QComboBox()
+        self.employment_combo.addItems([
+            'Любая',
+            'Полная',
+            'Частичная',
+            'Проектная',
+            'Стажировка',
+            'Волонтёрство',
+        ])
+        params_layout.addWidget(self.employment_combo)
+
+        search_layout.addLayout(params_layout)
+        main_layout.addWidget(search_group)
+
         # Кнопки управления
         button_layout = QHBoxLayout()
         self.search_btn = QPushButton('Найти вакансии')
@@ -136,6 +152,17 @@ class HHVacancyParser(QMainWindow):
         if self.experience_combo.currentText() != 'Любой':
             params['experience'] = experience_map[self.experience_combo.currentText()]
 
+        # Тип занятости
+        experience_map = {
+            'Полная': 'full',
+            'Частичная': 'part',
+            'Проектная': 'project',
+            'Стажировка': 'intern',
+            'Волонтёрство': 'volunteer',
+        }
+        if self.employment_combo.currentText() != 'Любая':
+            params['employment'] = experience_map[self.employment_combo.currentText()]
+
         self.status_bar.showMessage('Идет поиск вакансий...')
         QApplication.processEvents()
 
@@ -155,6 +182,7 @@ class HHVacancyParser(QMainWindow):
             self.status_bar.showMessage('Ошибка при получении данных')
 
     def display_results(self):
+        """ Функуия для отображения данных о вакансиях в таблице в графическом интерфейсе приложения """
         self.results_table.setRowCount(0)
 
         for vacancy in self.vacancies:
