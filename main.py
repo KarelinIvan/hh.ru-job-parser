@@ -19,6 +19,7 @@ class HHVacancyParser(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
+        """ Функция для вывода информации в приложение и фильтры """
         # Главный виджет и layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -65,11 +66,8 @@ class HHVacancyParser(QMainWindow):
                                         ])
         params_layout.addWidget(self.experience_combo)
 
-        search_layout.addLayout(params_layout)
-        main_layout.addWidget(search_group)
-
         # Тип занятости
-        params_layout.addWidget(QLabel('Занятость'))
+        params_layout.addWidget(QLabel('Занятость:'))
         self.employment_combo = QComboBox()
         self.employment_combo.addItems([
             'Любая',
@@ -99,10 +97,11 @@ class HHVacancyParser(QMainWindow):
 
         # Таблица результатов
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(6)
+        self.results_table.setColumnCount(7)
         self.results_table.setHorizontalHeaderLabels(['Название',
                                                       'Компания',
                                                       'Зарплата',
+                                                      'Тип занятости',
                                                       'Город',
                                                       'Дата публикации',
                                                       'Ссылка',
@@ -115,6 +114,7 @@ class HHVacancyParser(QMainWindow):
         self.setStatusBar(self.status_bar)
 
     def search_vacancies(self):
+        """ Функция для получения вакансий через API hh.ru """
         query = self.query_edit.text().strip()
         if not query:
             QMessageBox.warning(self, 'Ошибка', 'Введите поисковый запрос')
@@ -207,20 +207,24 @@ class HHVacancyParser(QMainWindow):
                 salary_str = f"{salary_from or '0'} - {salary_to or 'Не указано'} {currency}"
             self.results_table.setItem(row_position, 2, QTableWidgetItem(salary_str))
 
+            # Тип занятости
+            employment = vacancy.get('employment', {}).get('name', 'Не указан')
+            self.results_table.setItem(row_position, 3, QTableWidgetItem(employment))
+
             # Город
-            self.results_table.setItem(row_position, 3,
+            self.results_table.setItem(row_position, 4,
                                        QTableWidgetItem(vacancy.get('area', {}).get('name', '')))
 
             # Дата
             pub_date = vacancy.get('published_at', '')
             if pub_date:
                 pub_date = datetime.strptime(pub_date, '%Y-%m-%dT%H:%M:%S%z').strftime('%Y-%m-%d')
-            self.results_table.setItem(row_position, 4, QTableWidgetItem(pub_date))
+            self.results_table.setItem(row_position, 5, QTableWidgetItem(pub_date))
 
             # Ссылка
             link_item = QTableWidgetItem(vacancy.get('alternate_url', ''))
             link_item.setFlags(link_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
-            self.results_table.setItem(row_position, 5, link_item)
+            self.results_table.setItem(row_position, 6, link_item)
 
     def export_to_excel(self):
         """ Функция для сохранения данных в Excel-файл """
