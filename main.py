@@ -216,7 +216,14 @@ class HHVacancyParser(QMainWindow):
         """ Функуия для отображения данных о вакансиях в таблице в графическом интерфейсе приложения """
         self.results_table.setRowCount(0)
 
-        for vacancy in self.vacancies:
+        # Сортируем вакансии по дате (новые сначала)
+        sorted_vacancies = sorted(
+            self.vacancies,
+            key=lambda x: datetime.strptime(x.get('published_at', ''), '%Y-%m-%dT%H:%M:%S%z'),
+            reverse=True
+        )
+
+        for vacancy in sorted_vacancies:
             row_position = self.results_table.rowCount()
             self.results_table.insertRow(row_position)
 
