@@ -13,7 +13,7 @@ class HHVacancyParser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Парсер вакансий hh.ru')
-        self.setGeometry(100, 100, 900, 600)
+        self.setGeometry(100, 100, 1000, 700)
 
         self.vacancies = []
         self.init_ui()
@@ -160,15 +160,15 @@ class HHVacancyParser(QMainWindow):
             params['experience'] = experience_map[self.experience_combo.currentText()]
 
         # Тип занятости
-        experience_map = {
+        employment_map = {
             'Полная': 'full',
             'Частичная': 'part',
             'Проектная': 'project',
-            'Стажировка': 'intern',
+            'Стажировка': 'probation',
             'Волонтёрство': 'volunteer',
         }
         if self.employment_combo.currentText() != 'Любая':
-            params['employment'] = experience_map[self.employment_combo.currentText()]
+            params['employment'] = employment_map[self.employment_combo.currentText()]
 
         self.status_bar.showMessage('Идет поиск вакансий...')
         QApplication.processEvents()
