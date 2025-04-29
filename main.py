@@ -1,12 +1,14 @@
-import sys
-import requests
-import pandas as pd
-from datetime import datetime
 import os
+import sys
+
+import pandas as pd
+import requests
+from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget,
-                             QTableWidgetItem, QFileDialog, QMessageBox, QStatusBar)
-from PyQt6.QtCore import Qt
+                             QTableWidgetItem, QMessageBox, QStatusBar, QCompleter, QFileDialog)
+from PyQt6.QtCore import Qt, QStringListModel
+from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 
 class HHVacancyParser(QMainWindow):
@@ -15,8 +17,57 @@ class HHVacancyParser(QMainWindow):
         self.setWindowTitle('Парсер вакансий hh.ru')
         self.setGeometry(100, 100, 1000, 700)
 
+        # Кэш для хранения всех регионов {название: id}
+        self.areas_cache = {}
+
+        # Загружаем города при инициализации
+        self.load_areas()
+
         self.vacancies = []
         self.init_ui()
+
+    def load_areas(self):
+        """Загружает все регионы из API hh.ru при старте приложения"""
+        try:
+            response = requests.get('https://api.hh.ru/areas')
+            response.raise_for_status()
+            areas = response.json()
+
+            # Рекурсивная функция для обработки всех уровней вложенности
+            def process_area(area):
+                self.areas_cache[area['name'].lower()] = area['id']
+                for sub_area in area.get('areas', []):
+                    process_area(sub_area)
+
+            for area in areas:
+                process_area(area)
+
+            print(f"Загружено {len(self.areas_cache)} регионов")  # Для отладки
+        except Exception as e:
+            print(f"Ошибка при загрузке регионов: {e}")
+            # Запасной вариант - основные города
+            default_areas = {
+                'москва': 1,
+                'санкт-петербург': 2,
+                'новосибирск': 4,
+                'екатеринбург': 3,
+                'казань': 88,
+                'нижний новгород': 66,
+                'челябинск': 104,
+                'самара': 78,
+                'омск': 68,
+                'ростов-на-дону': 76,
+                'уфа': 99,
+                'красноярск': 54,
+                'пермь': 72,
+                'воронеж': 26,
+                'волгоград': 24,
+                'архангельск': 14,
+                'северодвинск': 1017,
+                'ярославль': 112,
+                'иваново': 32
+            }
+            self.areas_cache.update(default_areas)
 
     def init_ui(self):
         """ Функция для вывода информации в приложение и фильтры """
@@ -40,20 +91,19 @@ class HHVacancyParser(QMainWindow):
         # Дополнительные параметры
         params_layout = QHBoxLayout()
 
-        # Регион https://api.hh.ru/areas
-        params_layout.addWidget(QLabel('Регион:'))
-        self.area_combo = QComboBox()
-        self.area_combo.addItems([
-            'Архангельск (14)',
-            'Москва (1)',
-            'Санкт-Петербург (2)',
-            'Северодвинск (1017)',
-            'Иваново (32)',
-            'Ярославль (112)',
-            'Россия (113)',
-            'Другие регионы (1001)',
-        ])
-        params_layout.addWidget(self.area_combo)
+        # Поле для ввода города
+        params_layout.addWidget(QLabel('Город:'))
+        self.city_edit = QLineEdit()
+        self.city_edit.setPlaceholderText("Например: Москва")
+
+        # Настройка автодополнения для городов
+        completer_model = QStringListModel(list(self.areas_cache.keys()))
+        completer = QCompleter()
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setModel(completer_model)
+        self.city_edit.setCompleter(completer)
+
+        params_layout.addWidget(self.city_edit)
 
         # Зарплата
         params_layout.addWidget(QLabel('Зарплата от:'))
@@ -133,6 +183,10 @@ class HHVacancyParser(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
+    def get_area_id(self, city_name):
+        """Возвращает ID региона по названию города"""
+        return self.areas_cache.get(city_name.strip().lower())
+
     def search_vacancies(self):
         """ Функция для получения вакансий через API hh.ru """
         query = self.query_edit.text().strip()
@@ -146,13 +200,28 @@ class HHVacancyParser(QMainWindow):
         # URL
         base_url = 'https://api.hh.ru/vacancies'
 
-        # Подготовка параметров
+        # Обработка города
+        city_name = self.city_edit.text().strip()
+        area_id = None
+
+        if city_name:
+            self.status_bar.showMessage(f'Поиск вакансий в городе {city_name}...')
+            QApplication.processEvents()
+
+            area_id = self.get_area_id(city_name)
+            if not area_id:
+                QMessageBox.warning(self, 'Ошибка', f'Город "{city_name}" не найден. Проверьте написание.')
+                self.status_bar.clearMessage()
+                return
+
         params = {
             'text': query,
-            'area': self.area_combo.currentText().split("(")[1][:-1],
             'per_page': 100,
             'page': 0
         }
+
+        if area_id:
+            params['area'] = area_id
 
         # Зарплата
         if self.salary_edit.text():
@@ -216,7 +285,14 @@ class HHVacancyParser(QMainWindow):
         """ Функуия для отображения данных о вакансиях в таблице в графическом интерфейсе приложения """
         self.results_table.setRowCount(0)
 
-        for vacancy in self.vacancies:
+        # Сортируем вакансии по дате (новые сначала)
+        sorted_vacancies = sorted(
+            self.vacancies,
+            key=lambda x: datetime.strptime(x.get('published_at', ''), '%Y-%m-%dT%H:%M:%S%z'),
+            reverse=True
+        )
+
+        for vacancy in sorted_vacancies:
             row_position = self.results_table.rowCount()
             self.results_table.insertRow(row_position)
 
@@ -306,6 +382,7 @@ class HHVacancyParser(QMainWindow):
                     'Город': vacancy.get('area', {}).get('name', ''),
                     'Опыт': vacancy.get('experience', {}).get('name', ''),
                     'Тип занятости': vacancy.get('employment', {}).get('name', ''),
+                    'Формат работы': vacancy.get('schedule', {}).get('name', ''),
                     'Дата публикации': pub_date,
                     'Ссылка': vacancy.get('alternate_url', '')
                 })
