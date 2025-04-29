@@ -306,6 +306,7 @@ class HHVacancyParser(QMainWindow):
                     'Город': vacancy.get('area', {}).get('name', ''),
                     'Опыт': vacancy.get('experience', {}).get('name', ''),
                     'Тип занятости': vacancy.get('employment', {}).get('name', ''),
+                    'Формат работы': vacancy.get('schedule', {}).get('name', ''),
                     'Дата публикации': pub_date,
                     'Ссылка': vacancy.get('alternate_url', '')
                 })
