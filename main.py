@@ -170,7 +170,7 @@ class HHVacancyParser(QMainWindow):
                 salary_from = salary.get('from')
                 salary_to = salary.get('to')
                 currency = salary.get('currency', '').upper()
-                salary_str = f"{salary_from or '?'} - {salary_to or '?'} {currency}"
+                salary_str = f"{salary_from or '0'} - {salary_to or 'Не указано'} {currency}"
             self.results_table.setItem(row_position, 2, QTableWidgetItem(salary_str))
 
             # Город
@@ -180,7 +180,7 @@ class HHVacancyParser(QMainWindow):
             # Дата
             pub_date = vacancy.get('published_at', '')
             if pub_date:
-                pub_date = datetime.strptime(pub_date, '%Y-%m-%dT%H:%M:%S%z').strftime('%Y-%m-%dT%H:%M:%S%z')
+                pub_date = datetime.strptime(pub_date, '%Y-%m-%dT%H:%M:%S%z').strftime('%Y-%m-%d')
             self.results_table.setItem(row_position, 4, QTableWidgetItem(pub_date))
 
             # Ссылка
