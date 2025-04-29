@@ -104,6 +104,12 @@ class HHVacancyParser(QMainWindow):
             QMessageBox.warning(self, 'Ошибка', 'Введите поисковый запрос')
             return
 
+        # Требование запроса API
+        headers = {'User-Agent': 'hh.ru-job-parser/1.0 (ivan.karelin.1993@mail.ru)'}
+
+        # URL
+        base_url = 'https://api.hh.ru/vacancies'
+
         # Подготовка параметров
         params = {
             'text': query,
@@ -134,7 +140,7 @@ class HHVacancyParser(QMainWindow):
         QApplication.processEvents()
 
         try:
-            response = requests.get('https://api.hh.ru/vacancies', params=params)
+            response = requests.get(base_url, params=params, headers=headers)
             response.raise_for_status()
             data = response.json()
 
@@ -189,6 +195,7 @@ class HHVacancyParser(QMainWindow):
             self.results_table.setItem(row_position, 5, link_item)
 
     def export_to_excel(self):
+        """ Функция для сохранения данных в Excel-файл """
         if not self.vacancies:
             QMessageBox.warning(self, 'Предупреждение', 'Нет данных для экспорта')
             return
