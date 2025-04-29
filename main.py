@@ -8,14 +8,13 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget,
                              QTableWidgetItem, QMessageBox, QStatusBar, QCompleter, QFileDialog)
 from PyQt6.QtCore import Qt, QStringListModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 
 class HHVacancyParser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Парсер вакансий hh.ru')
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 1250, 900)
 
         # Кэш для хранения всех регионов {название: id}
         self.areas_cache = {}
