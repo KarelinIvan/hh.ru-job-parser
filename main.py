@@ -8,14 +8,13 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget,
                              QTableWidgetItem, QMessageBox, QStatusBar, QCompleter, QFileDialog)
 from PyQt6.QtCore import Qt, QStringListModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 
 class HHVacancyParser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Парсер вакансий hh.ru')
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 1250, 900)
 
         # Кэш для хранения всех регионов {название: id}
         self.areas_cache = {}
@@ -336,6 +335,18 @@ class HHVacancyParser(QMainWindow):
             link_item = QTableWidgetItem(vacancy.get('alternate_url', ''))
             link_item.setFlags(link_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
             self.results_table.setItem(row_position, 7, link_item)
+
+            # Настройка ширины столбцов
+            self.results_table.setColumnWidth(0, 300)  # Название
+            self.results_table.setColumnWidth(1, 200)  # Компания
+            self.results_table.setColumnWidth(2, 150)  # Зарплата
+            self.results_table.setColumnWidth(3, 120)  # Тип занятости
+            self.results_table.setColumnWidth(4, 120)  # Форма работы
+            self.results_table.setColumnWidth(5, 120)  # Город
+            self.results_table.setColumnWidth(6, 120)  # Дата публикации
+
+            # Включение переноса текста
+            self.results_table.setWordWrap(True)
 
     def export_to_excel(self):
         """Функция для сохранения данных в Excel-файл"""
